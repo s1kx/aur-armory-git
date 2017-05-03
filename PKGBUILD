@@ -1,35 +1,51 @@
 # Maintainer: Jonathan la Cour <jon@lacour.me>
 # Contributor: Pieter Kokx <pieter@kokx.nl>
+# Contributor: Patrick Glandien <patrick@synix.io>
 pkgname=armory-git
-pkgver=v0.94.1.r0.gc8a5963
+pkgver=v0.96.r0.ga3d01aa7
 pkgrel=1
 pkgdesc="Full-featured Bitcoin wallet management application"
 arch=('i686' 'x86_64')
 url="https://github.com/goatpig/BitcoinArmory"
 license=('AGPL3')
-depends=('crypto++' 'swig' 'python2' 'twisted' 'qt4' 'python2-pyqt4' 'python2-bsddb' 'python2-psutil')
+depends=('crypto++' 'swig' 'qt4' 'python' 'python-twisted' 'python-pyqt4' 'python-bsddb' 'python-psutil')
 makedepends=('git' 'gcc' 'make')
-optdepends=('bitcoin-daemon: Communicate with the Bitcoin network')
+optdepends=('bitcoin-core: Communicate with the Bitcoin network')
 install="${pkgname}.install"
 provides=('armory')
 conflicts=('armory')
 source=("$pkgname"::'git+https://github.com/goatpig/BitcoinArmory.git'
-        'run-armory.sh'
-        'makefile-01.patch')
+        'run-armory.sh')
 noextract=()
 sha256sums=('SKIP'
-            '4b8ab285588ec07601fb4d9580b84e11a513635a102d92ee7c283261d0b6c0dc'
-            '5091c0e66bba8bb2daff320224dc3643279d2d5e014ac52a880b7e20ee67dd91')
+            '4b8ab285588ec07601fb4d9580b84e11a513635a102d92ee7c283261d0b6c0dc')
 
 pkgver() {
     cd "$srcdir/$pkgname"
     git describe --tags --long $(git rev-list --tags --max-count=1) | sed -E 's/([^-]*-g)/r\1/;s/-/./g'
 }
 
+prepare() {
+    cd "$srcdir/$pkgname"
+
+    git submodule update --init
+
+    ## Get Python2 Version
+    _py2longver=$(pacman -Qi python2 | grep "Version" | sed 's/^Version\s*:\s//')
+    _py2ver=${_py2longver%.*}
+    PYTHON_VERSION=${_py2ver}  ./autogen.sh
+}
+
 build() {
     cd "$srcdir/$pkgname"
-    patch -p0 -i $srcdir/makefile-01.patch
-    make
+
+    ## Get Python2 Version
+    _py2longver=$(pacman -Qi python2 | grep "Version" | sed 's/^Version\s*:\s//')
+    _py2ver=${_py2longver%.*}
+    PYTHON_VERSION=${_py2ver} ./configure
+
+    ## Build using current python2 version
+    PYTHON_VERSION=${_py2ver} make -j"${nproc}"
 }
 
 package() {
